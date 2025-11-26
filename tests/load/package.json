@@ -1,0 +1,18 @@
+{
+  "name": "@ai-tutor/load-tests",
+  "version": "1.0.0",
+  "description": "Load and performance tests for AI Tutoring Platform",
+  "private": true,
+  "scripts": {
+    "test:load": "k6 run --vus 1000 --duration 5m scenarios/full-load.js",
+    "test:load:light": "k6 run --vus 100 --duration 2m scenarios/full-load.js",
+    "test:ai": "k6 run --vus 500 --duration 3m scenarios/ai-service.js",
+    "test:database": "k6 run --vus 800 --duration 5m scenarios/database-stress.js",
+    "test:cache": "k6 run scenarios/cache-effectiveness.js",
+    "test:all": "npm run test:load:light && npm run test:ai && npm run test:cache",
+    "report": "k6 run --out json=results/load-test-results.json scenarios/full-load.js"
+  },
+  "devDependencies": {
+    "k6": "^0.0.0"
+  }
+}

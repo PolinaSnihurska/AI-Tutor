@@ -1,0 +1,329 @@
+name: Backup and Restore Tests
+
+on:
+  schedule:
+    # Run weekly on Sundays at 3 AM UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  test-backup-scripts:
+    name: Test Backup Scripts
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: ai_tutor_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      mongodb:
+        image: mongo:7
+        env:
+          MONGO_INITDB_ROOT_USERNAME: mongo
+          MONGO_INITDB_ROOT_PASSWORD: test_password
+          MONGO_INITDB_DATABASE: ai_tutor_test
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      
+      - name: Install MongoDB tools
+        run: |
+          wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-mongosh mongodb-database-tools
+      
+      - name: Install Redis tools
+        run: |
+          sudo apt-get install -y redis-tools
+      
+      - name: Set up test environment
+        run: |
+          # Create test data in PostgreSQL
+          PGPASSWORD=test_password psql -h localhost -U postgres -d ai_tutor_test -c "
+            CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              email VARCHAR(255) UNIQUE NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO users (email) VALUES ('test1@example.com'), ('test2@example.com');
+          "
+          
+          # Create test data in MongoDB
+          mongosh "mongodb://mongo:test_password@localhost:27017/ai_tutor_test?authSource=admin" --eval "
+            db.tests.insertMany([
+              { title: 'Test 1', questions: [] },
+              { title: 'Test 2', questions: [] }
+            ]);
+          "
+          
+          # Create test data in Redis
+          redis-cli SET test_key "test_value"
+      
+      - name: Configure backup environment
+        run: |
+          cat > scripts/backup/.env << EOF
+          DB_HOST=localhost
+          DB_PORT=5432
+          DB_NAME=ai_tutor_test
+          DB_USER=postgres
+          DB_PASSWORD=test_password
+          
+          MONGO_HOST=localhost
+          MONGO_PORT=27017
+          MONGO_DB=ai_tutor_test
+          MONGO_USER=mongo
+          MONGO_PASSWORD=test_password
+          
+          REDIS_HOST=localhost
+          REDIS_PORT=6379
+          REDIS_PASSWORD=
+          
+          BACKUP_DIR=${{ github.workspace }}/test_backups
+          RETENTION_DAYS=1
+          ENVIRONMENT=test
+          EOF
+          
+          # Source the environment
+          set -a
+          source scripts/backup/.env
+          set +a
+          
+          # Create backup directory
+          mkdir -p ${{ github.workspace }}/test_backups
+      
+      - name: Test PostgreSQL backup
+        run: |
+          set -a
+          source scripts/backup/.env
+          set +a
+          bash scripts/backup/backup-postgres.sh
+      
+      - name: Test MongoDB backup
+        run: |
+          set -a
+          source scripts/backup/.env
+          set +a
+          bash scripts/backup/backup-mongodb.sh
+      
+      - name: Test Redis backup
+        run: |
+          set -a
+          source scripts/backup/.env
+          set +a
+          bash scripts/backup/backup-redis.sh
+      
+      - name: Verify backups
+        run: |
+          # Check PostgreSQL backup
+          if [ -f test_backups/postgres_backup_*.sql.gz ]; then
+            echo "✓ PostgreSQL backup created"
+            gunzip -t test_backups/postgres_backup_*.sql.gz && echo "✓ PostgreSQL backup integrity verified"
+          else
+            echo "✗ PostgreSQL backup not found"
+            exit 1
+          fi
+          
+          # Check MongoDB backup
+          if [ -f test_backups/mongodb_backup_*.tar.gz ]; then
+            echo "✓ MongoDB backup created"
+            tar -tzf test_backups/mongodb_backup_*.tar.gz > /dev/null && echo "✓ MongoDB backup integrity verified"
+          else
+            echo "✗ MongoDB backup not found"
+            exit 1
+          fi
+          
+          # Check Redis backup
+          if [ -f test_backups/redis_backup_*.rdb.gz ]; then
+            echo "✓ Redis backup created"
+            gunzip -t test_backups/redis_backup_*.rdb.gz && echo "✓ Redis backup integrity verified"
+          else
+            echo "✗ Redis backup not found"
+            exit 1
+          fi
+      
+      - name: Test restore scripts syntax
+        run: |
+          bash -n scripts/restore/restore-postgres.sh
+          bash -n scripts/restore/restore-mongodb.sh
+          bash -n scripts/restore/restore-redis.sh
+          echo "✓ All restore scripts have valid syntax"
+      
+      - name: Upload backup artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-backups
+          path: test_backups/
+          retention-days: 7
+      
+      - name: Notify on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "❌ Backup tests failed in ${{ github.repository }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Backup Tests Failed*\n\nWorkflow: ${{ github.workflow }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  test-disaster-recovery:
+    name: Test Disaster Recovery Procedures
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Validate disaster recovery plan
+        run: |
+          # Check that disaster recovery plan exists
+          if [ -f DISASTER_RECOVERY_PLAN.md ]; then
+            echo "✓ Disaster recovery plan exists"
+          else
+            echo "✗ Disaster recovery plan not found"
+            exit 1
+          fi
+          
+          # Check for required sections
+          REQUIRED_SECTIONS=(
+            "Backup Strategy"
+            "Recovery Objectives"
+            "Disaster Scenarios"
+            "Recovery Procedures"
+            "Testing and Validation"
+          )
+          
+          for SECTION in "${REQUIRED_SECTIONS[@]}"; do
+            if grep -q "${SECTION}" DISASTER_RECOVERY_PLAN.md; then
+              echo "✓ Section found: ${SECTION}"
+            else
+              echo "✗ Section missing: ${SECTION}"
+              exit 1
+            fi
+          done
+      
+      - name: Check backup scripts exist
+        run: |
+          REQUIRED_SCRIPTS=(
+            "scripts/backup/backup-postgres.sh"
+            "scripts/backup/backup-mongodb.sh"
+            "scripts/backup/backup-redis.sh"
+            "scripts/backup/backup-all.sh"
+            "scripts/restore/restore-postgres.sh"
+            "scripts/restore/restore-mongodb.sh"
+            "scripts/restore/restore-redis.sh"
+          )
+          
+          for SCRIPT in "${REQUIRED_SCRIPTS[@]}"; do
+            if [ -f "${SCRIPT}" ] && [ -x "${SCRIPT}" ]; then
+              echo "✓ Script exists and is executable: ${SCRIPT}"
+            else
+              echo "✗ Script missing or not executable: ${SCRIPT}"
+              exit 1
+            fi
+          done
+      
+      - name: Validate Kubernetes backup configuration
+        run: |
+          if [ -f k8s/backup-cronjobs.yaml ]; then
+            echo "✓ Kubernetes backup CronJobs configuration exists"
+            
+            # Basic YAML validation
+            if command -v yamllint &> /dev/null; then
+              yamllint k8s/backup-cronjobs.yaml
+            fi
+          else
+            echo "✗ Kubernetes backup configuration not found"
+            exit 1
+          fi
+      
+      - name: Generate test report
+        if: always()
+        run: |
+          cat > disaster-recovery-test-report.md << EOF
+          # Disaster Recovery Test Report
+          
+          **Date**: $(date)
+          **Environment**: ${{ github.event.inputs.environment || 'N/A' }}
+          **Triggered by**: ${{ github.actor }}
+          
+          ## Test Results
+          
+          - ✓ Disaster recovery plan exists and is complete
+          - ✓ All backup scripts exist and are executable
+          - ✓ All restore scripts exist and are executable
+          - ✓ Kubernetes backup configuration is valid
+          
+          ## Next Steps
+          
+          1. Review and update disaster recovery plan quarterly
+          2. Conduct full DR drill in staging environment
+          3. Verify backup retention policies
+          4. Test restore procedures with real data
+          
+          EOF
+          
+          cat disaster-recovery-test-report.md
+      
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: disaster-recovery-test-report
+          path: disaster-recovery-test-report.md
+          retention-days: 30

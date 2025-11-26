@@ -1,0 +1,321 @@
+name: Integration and E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: ai_tutor_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      mongodb:
+        image: mongo:7
+        env:
+          MONGO_INITDB_ROOT_USERNAME: test_user
+          MONGO_INITDB_ROOT_PASSWORD: test_password
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd tests && npm ci
+
+      - name: Build services
+        run: npm run build
+
+      - name: Run database migrations
+        run: |
+          cd packages/auth-service && npm run migrate
+          cd ../analytics-service && npm run migrate
+          cd ../learning-plan-service && npm run migrate
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/ai_tutor_test
+
+      - name: Start services
+        run: |
+          # Start auth service
+          cd packages/auth-service
+          npm start &
+          AUTH_PID=$!
+          
+          # Start test service
+          cd ../test-service
+          npm start &
+          TEST_PID=$!
+          
+          # Start learning plan service
+          cd ../learning-plan-service
+          npm start &
+          PLAN_PID=$!
+          
+          # Start analytics service
+          cd ../analytics-service
+          npm start &
+          ANALYTICS_PID=$!
+          
+          # Start AI service
+          cd ../ai-service
+          pip install -r requirements.txt
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          AI_PID=$!
+          
+          # Wait for services to be ready
+          sleep 30
+          
+          # Save PIDs for cleanup
+          echo $AUTH_PID > /tmp/auth.pid
+          echo $TEST_PID > /tmp/test.pid
+          echo $PLAN_PID > /tmp/plan.pid
+          echo $ANALYTICS_PID > /tmp/analytics.pid
+          echo $AI_PID > /tmp/ai.pid
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/ai_tutor_test
+          MONGODB_URI: mongodb://test_user:test_password@localhost:27017/ai_tutor_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_jwt_secret_key_for_ci
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Run integration tests
+        run: |
+          cd tests
+          npm run test:integration
+        env:
+          AUTH_SERVICE_URL: http://localhost:3001
+          TEST_SERVICE_URL: http://localhost:3003
+          LEARNING_PLAN_SERVICE_URL: http://localhost:3004
+          ANALYTICS_SERVICE_URL: http://localhost:3005
+          AI_SERVICE_URL: http://localhost:8000
+
+      - name: Upload integration test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-results
+          path: tests/coverage/integration
+
+      - name: Cleanup services
+        if: always()
+        run: |
+          kill $(cat /tmp/auth.pid) || true
+          kill $(cat /tmp/test.pid) || true
+          kill $(cat /tmp/plan.pid) || true
+          kill $(cat /tmp/analytics.pid) || true
+          kill $(cat /tmp/ai.pid) || true
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: ai_tutor_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      mongodb:
+        image: mongo:7
+        env:
+          MONGO_INITDB_ROOT_USERNAME: test_user
+          MONGO_INITDB_ROOT_PASSWORD: test_password
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd tests && npm ci
+
+      - name: Install Playwright browsers
+        run: |
+          cd tests
+          npm run playwright:install
+
+      - name: Build services
+        run: npm run build
+
+      - name: Run database migrations
+        run: |
+          cd packages/auth-service && npm run migrate
+          cd ../analytics-service && npm run migrate
+          cd ../learning-plan-service && npm run migrate
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/ai_tutor_test
+
+      - name: Start backend services
+        run: |
+          # Start all backend services
+          cd packages/auth-service && npm start &
+          cd ../test-service && npm start &
+          cd ../learning-plan-service && npm start &
+          cd ../analytics-service && npm start &
+          cd ../ai-service && pip install -r requirements.txt && uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          
+          # Wait for services
+          sleep 30
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/ai_tutor_test
+          MONGODB_URI: mongodb://test_user:test_password@localhost:27017/ai_tutor_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_jwt_secret_key_for_ci
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Start frontend
+        run: |
+          cd packages/frontend
+          npm run build
+          npm run preview -- --port 3000 &
+          sleep 10
+        env:
+          VITE_API_URL: http://localhost:3001
+
+      - name: Run E2E tests
+        run: |
+          cd tests
+          npm run test:e2e
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: Upload E2E test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-test-results
+          path: |
+            tests/test-results/
+            tests/playwright-report/
+
+      - name: Upload test videos
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-test-videos
+          path: tests/test-results/**/*.webm
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [integration-tests, e2e-tests]
+    if: always()
+
+    steps:
+      - name: Download integration test results
+        uses: actions/download-artifact@v3
+        with:
+          name: integration-test-results
+          path: integration-results
+
+      - name: Download E2E test results
+        uses: actions/download-artifact@v3
+        with:
+          name: e2e-test-results
+          path: e2e-results
+
+      - name: Generate summary
+        run: |
+          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Integration Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### E2E Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: ${{ needs.e2e-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.integration-tests.result }}" == "success" ] && [ "${{ needs.e2e-tests.result }}" == "success" ]; then
+            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some tests failed. Please review the artifacts." >> $GITHUB_STEP_SUMMARY
+          fi

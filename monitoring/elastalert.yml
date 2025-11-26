@@ -1,0 +1,24 @@
+# ElastAlert configuration for log-based alerting
+
+# Elasticsearch connection
+es_host: elasticsearch
+es_port: 9200
+
+# Alert rules directory
+rules_folder: /opt/elastalert/rules
+
+# How often to query Elasticsearch
+run_every:
+  minutes: 1
+
+# Buffer time for query
+buffer_time:
+  minutes: 15
+
+# Writeback index for ElastAlert state
+writeback_index: elastalert_status
+writeback_alias: elastalert_alerts
+
+# Alert time limit
+alert_time_limit:
+  days: 2

@@ -1,0 +1,521 @@
+# Implementation Plan
+
+- [x] 1. Set up project infrastructure and development environment
+  - Initialize monorepo structure with separate packages for frontend, backend services, and shared types
+  - Configure TypeScript, ESLint, Prettier for code quality
+  - Set up Docker Compose for local development with PostgreSQL, MongoDB, Redis
+  - Create environment configuration management for different deployment stages
+  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [x] 2. Implement authentication and user management system
+  - [x] 2.1 Create user database schema and models
+    - Write PostgreSQL migrations for users, subscriptions, and parent_child_links tables
+    - Implement User, Subscription, and ParentChildLink models with validation
+    - _Requirements: 9.1, 9.2, 9.3_
+  - [x] 2.2 Build authentication service with JWT
+    - Implement registration endpoint with email validation
+    - Create login endpoint with password hashing (bcrypt)
+    - Build JWT token generation and refresh token mechanism
+    - Implement password reset flow with email tokens
+    - _Requirements: 9.1, 9.2_
+  - [x] 2.3 Implement role-based access control middleware
+    - Create RBAC middleware for student, parent, and admin roles
+    - Implement route protection based on user roles
+    - Add parent-child relationship verification for parent cabinet access
+    - _Requirements: 9.3, 5.1_
+  - [x] 2.4 Write authentication integration tests
+    - Test registration, login, token refresh flows
+    - Test RBAC middleware with different user roles
+    - Test parent-child linking authorization
+    - _Requirements: 9.1, 9.2, 9.3_
+
+- [x] 3. Build user profile and subscription management
+  - [x] 3.1 Create user profile service
+    - Implement get and update profile endpoints
+    - Add profile validation and sanitization
+    - Create parent-child linking endpoints
+    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 5.5_
+  - [x] 3.2 Implement subscription management
+    - Create subscription database operations
+    - Build subscription tier checking middleware
+    - Implement feature access control based on subscription tier
+    - Add subscription upgrade/downgrade logic
+    - _Requirements: 11.1, 11.2, 11.3, 11.5, 1.4, 1.5, 2.4, 2.5, 3.5, 3.6, 4.5, 4.6_
+  - [x] 3.3 Integrate Stripe for payment processing
+    - Set up Stripe SDK and webhook handlers
+    - Implement subscription creation and payment flow
+    - Handle subscription lifecycle events (renewal, cancellation)
+    - _Requirements: 11.4_
+  - [x] 3.4 Write subscription service tests
+    - Test tier-based feature access
+    - Test payment flow integration
+    - Test subscription state transitions
+    - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
+
+- [x] 4. Implement usage tracking and rate limiting
+  - [x] 4.1 Create usage tracking system
+    - Build usage_tracking table operations
+    - Implement daily usage counter for AI queries and tests
+    - Create usage reset job for daily limits
+    - _Requirements: 1.4, 1.5, 3.5, 3.6_
+  - [x] 4.2 Build rate limiting middleware with Redis
+    - Implement Redis-based rate limiter
+    - Create tier-specific rate limit configurations
+    - Add rate limit headers to API responses
+    - Build rate limit exceeded error handling with upgrade prompts
+    - _Requirements: 1.4, 1.5, 3.5, 3.6_
+  - [x] 4.3 Test rate limiting under load
+    - Verify rate limits work correctly for different tiers
+    - Test Redis failover scenarios
+    - _Requirements: 1.4, 1.5_
+
+- [x] 5. Build AI service foundation
+  - [x] 5.1 Set up Python FastAPI service for AI operations
+    - Initialize FastAPI project with proper structure
+    - Configure OpenAI API client with error handling
+    - Implement health check and service status endpoints
+    - Set up logging and monitoring
+    - _Requirements: 1.1, 1.2, 1.3, 7.1_
+  - [x] 5.2 Create prompt management system with LangChain
+    - Build prompt templates for different explanation types
+    - Implement prompt versioning and A/B testing capability
+    - Create context management for conversation history
+    - _Requirements: 1.2, 1.3, 12.1_
+  - [x] 5.3 Implement explanation generation endpoint
+    - Create API endpoint for topic explanations
+    - Implement age-appropriate content adaptation
+    - Add example generation logic
+    - Build response streaming for long explanations
+    - Cache common explanations in Redis
+    - _Requirements: 1.1, 1.2, 1.3, 12.1_
+  - [x] 5.4 Test AI service response quality
+    - Validate response times meet <2s requirement
+    - Test explanation quality with sample topics
+    - Verify caching mechanism works correctly
+    - _Requirements: 1.1, 7.1_
+
+- [x] 6. Implement test generation and management
+  - [x] 6.1 Create test database schema in MongoDB
+    - Design and implement tests collection structure
+    - Create indexes for efficient querying
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+  - [x] 6.2 Build AI-powered test generation
+    - Implement test generation endpoint in AI service
+    - Create question generation logic with difficulty levels
+    - Build multiple choice, true/false, and open-ended question generators
+    - Add topic-based question selection
+    - _Requirements: 3.1, 3.2, 12.2_
+  - [x] 6.3 Create test service API
+    - Implement create test endpoint
+    - Build get test endpoint with access control
+    - Create test submission endpoint
+    - Implement test history retrieval
+    - _Requirements: 3.1, 3.3_
+  - [x] 6.4 Build test evaluation and feedback system
+    - Implement answer checking logic
+    - Create detailed result generation with explanations
+    - Build weak topic identification algorithm
+    - Generate personalized recommendations based on results
+    - _Requirements: 3.3, 3.4_
+  - [x] 6.5 Implement adaptive questioning logic
+    - Create difficulty adjustment algorithm based on performance
+    - Build question selection that adapts to student level
+    - _Requirements: 3.4_
+  - [x] 6.6 Write test service integration tests
+    - Test complete test lifecycle (create, take, submit, evaluate)
+    - Verify adaptive questioning works correctly
+    - Test weak topic identification accuracy
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+
+- [x] 7. Build learning plan generation system
+  - [x] 7.1 Create learning plan database operations
+    - Implement learning_plans table CRUD operations
+    - Build task and goal management functions
+    - _Requirements: 2.1, 2.2, 2.3_
+  - [x] 7.2 Implement AI-powered plan generation
+    - Create plan generation endpoint in AI service
+    - Build algorithm to analyze student knowledge gaps
+    - Generate daily tasks based on exam timeline and current level
+    - Create weekly goal setting logic
+    - _Requirements: 2.1, 2.4, 2.5_
+  - [x] 7.3 Build plan management API
+    - Create endpoint to generate new learning plan
+    - Implement plan retrieval and update endpoints
+    - Build task completion tracking
+    - Add plan progress calculation
+    - _Requirements: 2.1, 2.2_
+  - [x] 7.4 Implement reminder system
+    - Create notification service for task reminders
+    - Build intelligent reminder scheduling based on user activity
+    - Implement email and in-app notification delivery
+    - _Requirements: 2.3_
+  - [x] 7.5 Test learning plan generation quality
+    - Verify plans are generated within 5 seconds
+    - Test plan quality with different student profiles
+    - Validate reminder delivery
+    - _Requirements: 2.1, 2.3_
+
+- [x] 8. Implement analytics and progress tracking
+  - [x] 8.1 Create analytics database schema
+    - Implement analytics_snapshots table operations
+    - Build efficient queries for time-series data
+    - Set up database partitioning for performance
+    - _Requirements: 4.1, 4.2, 4.3, 4.4_
+  - [x] 8.2 Build analytics data collection system
+    - Create event tracking for student activities
+    - Implement real-time analytics updates with WebSocket
+    - Build daily snapshot generation job
+    - _Requirements: 4.4_
+  - [x] 8.3 Implement progress calculation engine
+    - Create overall score calculation algorithm
+    - Build subject-specific performance metrics
+    - Implement improvement rate calculation
+    - Calculate study consistency metrics
+    - _Requirements: 4.1_
+  - [x] 8.4 Build heatmap generation
+    - Implement error rate calculation by topic
+    - Create heatmap data structure generation
+    - Add trend analysis (improving/stable/declining)
+    - _Requirements: 4.2_
+  - [x] 8.5 Create predictive analytics system
+    - Build ML model for success prediction (or use AI service)
+    - Implement prediction endpoint with confidence scores
+    - Generate factor analysis for predictions
+    - Create recommendation engine based on predictions
+    - _Requirements: 4.3_
+  - [x] 8.6 Build analytics API endpoints
+    - Create get progress endpoint
+    - Implement heatmap retrieval endpoint
+    - Build prediction endpoint
+    - Add performance trends endpoint
+    - _Requirements: 4.1, 4.2, 4.3_
+  - [x] 8.7 Test analytics accuracy
+    - Verify prediction accuracy meets 85% requirement
+    - Test real-time update performance
+    - Validate heatmap generation correctness
+    - _Requirements: 4.3, 4.4_
+
+- [-] 9. Build parent cabinet functionality
+  - [x] 9.1 Create parent analytics service
+    - Implement child selection and switching logic
+    - Build aggregated analytics for parent view
+    - Create study time tracking and reporting
+    - Generate performance by subject reports
+    - _Requirements: 5.1, 5.2_
+  - [x] 9.2 Implement parental control features
+    - Build learning time monitoring
+    - Create content access controls
+    - Implement activity logging for parent review
+    - _Requirements: 5.3, 9.3_
+  - [x] 9.3 Build recommendation engine for parents
+    - Generate actionable recommendations based on child performance
+    - Create weak topic alerts
+    - Build goal comparison reports
+    - _Requirements: 5.3, 5.4_
+  - [x] 9.4 Create parent cabinet API endpoints
+    - Implement get children endpoint
+    - Build child analytics endpoint
+    - Create notification preferences endpoint
+    - _Requirements: 5.1, 5.2, 5.3, 5.4_
+  - [x] 9.5 Test parent cabinet features
+    - Verify parent can access only their children's data
+    - Test analytics accuracy for parent view
+    - Validate recommendation quality
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+- [x] 10. Build frontend application foundation
+  - [x] 10.1 Set up React application with TypeScript
+    - Initialize React project with Vite
+    - Configure TypeScript, ESLint, Prettier
+    - Set up Tailwind CSS for styling
+    - Configure routing with React Router
+    - _Requirements: 8.1, 8.2, 10.1, 10.2, 10.3, 10.4, 10.5_
+  - [x] 10.2 Implement state management
+    - Set up Redux Toolkit for global state
+    - Configure TanStack Query for server state
+    - Create auth state management
+    - Build user profile state management
+    - _Requirements: 8.1, 8.2_
+  - [x] 10.3 Create shared UI components
+    - Build button, input, card, modal components
+    - Create loading and error state components
+    - Implement toast notification system
+    - Build responsive layout components
+    - _Requirements: 10.1, 10.2, 10.3, 10.4_
+  - [x] 10.4 Implement API client layer
+    - Create axios instance with interceptors
+    - Build API client for each backend service
+    - Implement automatic token refresh
+    - Add error handling and retry logic
+    - _Requirements: 7.1, 8.1, 8.2_
+
+- [x] 11. Build authentication and onboarding UI
+  - [x] 11.1 Create authentication pages
+    - Build registration form with validation
+    - Create login page with error handling
+    - Implement password reset flow UI
+    - Add email verification page
+    - _Requirements: 9.1, 9.2_
+  - [x] 11.2 Build onboarding flow
+    - Create role selection (student/parent)
+    - Build student profile setup wizard
+    - Implement parent profile and child linking UI
+    - Add subscription tier selection page
+    - _Requirements: 11.1, 11.2, 11.3_
+  - [x] 11.3 Implement protected route system
+    - Create route guards based on authentication
+    - Build role-based route protection
+    - Add subscription tier-based feature gates
+    - _Requirements: 9.3, 11.1_
+
+- [x] 12. Build student dashboard and learning interface
+  - [x] 12.1 Create student dashboard page
+    - Build learning plan display component
+    - Implement recent activities feed
+    - Create progress summary cards
+    - Add achievements display
+    - Build quick action buttons
+    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+  - [x] 12.2 Implement AI chat interface
+    - Build chat UI with message history
+    - Create message input with rich text support
+    - Implement real-time typing indicators
+    - Add suggested questions display
+    - Build context-aware conversation UI
+    - _Requirements: 1.1, 1.2, 1.3_
+  - [x] 12.3 Build learning plan interface
+    - Create daily task list with completion tracking
+    - Implement task detail view
+    - Build weekly goals display
+    - Add progress visualization
+    - _Requirements: 2.1, 2.2, 2.3_
+  - [x] 12.4 Create student cabinet pages
+    - Build lesson history page
+    - Implement saved materials library
+    - Create favorite topics page
+    - Build achievements and badges display
+    - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
+
+- [x] 13. Build test-taking interface
+  - [x] 13.1 Create test selection and generation UI
+    - Build test browser with filters
+    - Implement custom test generation form
+    - Add test preview functionality
+    - _Requirements: 3.1, 3.2_
+  - [x] 13.2 Build test-taking interface
+    - Create question display component
+    - Implement answer selection UI for different question types
+    - Build test timer and progress indicator
+    - Add navigation between questions
+    - Implement test submission confirmation
+    - _Requirements: 3.1, 3.3_
+  - [x] 13.3 Create test results and feedback UI
+    - Build results summary page
+    - Implement detailed question review with explanations
+    - Create weak topics visualization
+    - Add recommendations display
+    - Build test history page
+    - _Requirements: 3.3, 3.4_
+
+- [x] 14. Build analytics and progress visualization
+  - [x] 14.1 Create progress dashboard
+    - Build overall performance chart
+    - Implement subject-specific performance graphs
+    - Create study time visualization
+    - Add improvement rate indicators
+    - _Requirements: 4.1_
+  - [x] 14.2 Implement heatmap visualization
+    - Build interactive topic heatmap
+    - Create error rate visualization by topic
+    - Add trend indicators
+    - Implement drill-down functionality
+    - _Requirements: 4.2_
+  - [x] 14.3 Build prediction and insights UI
+    - Create success prediction display with confidence
+    - Implement factor analysis visualization
+    - Build recommendations panel
+    - Add goal comparison charts
+    - _Requirements: 4.3_
+
+- [x] 15. Build parent cabinet interface
+  - [x] 15.1 Create parent dashboard
+    - Build child selector component
+    - Implement overview cards for each child
+    - Create notification center
+    - Add quick access to reports
+    - _Requirements: 5.1_
+  - [x] 15.2 Build parent analytics pages
+    - Create detailed child progress page
+    - Implement study time reports
+    - Build performance by subject visualization
+    - Add weak topics alerts
+    - Create comparison to goals view
+    - _Requirements: 5.1, 5.2, 5.4_
+  - [x] 15.3 Implement parental control settings
+    - Build learning time limits configuration
+    - Create content access controls UI
+    - Implement notification preferences
+    - Add child account management
+    - _Requirements: 5.3, 9.3_
+
+- [x] 16. Implement subscription and payment UI
+  - [x] 16.1 Create pricing and plans page
+    - Build feature comparison table
+    - Implement plan selection UI
+    - Add FAQ section
+    - _Requirements: 11.1, 11.2_
+  - [x] 16.2 Build payment flow
+    - Integrate Stripe Elements for payment
+    - Create checkout page
+    - Implement payment confirmation
+    - Add invoice and receipt display
+    - _Requirements: 11.4_
+  - [x] 16.3 Create subscription management page
+    - Build current plan display
+    - Implement upgrade/downgrade UI
+    - Add cancellation flow
+    - Create billing history page
+    - _Requirements: 11.3, 11.5_
+
+- [x] 17. Implement performance optimizations
+  - [x] 17.1 Add caching layer
+    - Implement Redis caching for AI responses
+    - Add cache for test templates
+    - Build cache invalidation strategy
+    - _Requirements: 7.1, 7.2_
+  - [x] 17.2 Optimize frontend performance
+    - Implement code splitting and lazy loading
+    - Add image optimization
+    - Build service worker for offline support
+    - Optimize bundle size
+    - _Requirements: 10.5_
+  - [x] 17.3 Optimize database queries
+    - Add database indexes for common queries
+    - Implement query optimization
+    - Add connection pooling
+    - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [-] 18. Implement monitoring and error tracking
+  - [x] 18.1 Set up application monitoring
+    - Integrate Sentry for error tracking
+    - Set up Prometheus metrics collection
+    - Create Grafana dashboards
+    - Implement health check endpoints
+    - _Requirements: 7.4, 7.5_
+  - [x] 18.2 Build logging infrastructure
+    - Implement structured logging
+    - Set up log aggregation
+    - Create log-based alerts
+    - _Requirements: 7.4_
+  - [x] 18.3 Add performance monitoring
+    - Implement API response time tracking
+    - Add database query performance monitoring
+    - Create real-user monitoring
+    - Build custom analytics events
+    - _Requirements: 7.1, 7.2, 7.3_
+
+- [x] 19. Build admin panel
+  - [x] 19.1 Create admin authentication and dashboard
+    - Build admin login with enhanced security
+    - Create admin dashboard with key metrics
+    - Implement user management interface
+    - _Requirements: 9.1, 9.2_
+  - [x] 19.2 Build content management system
+    - Create interface for managing test questions
+    - Implement content library management
+    - Add AI prompt template editor
+    - Build subject and topic management
+    - _Requirements: 12.1, 12.2, 12.5_
+  - [x] 19.3 Implement system monitoring tools
+    - Create service health dashboard
+    - Build user activity monitoring
+    - Add subscription analytics
+    - Implement AI usage analytics
+    - _Requirements: 7.4_
+
+- [x] 20. Implement security hardening
+  - [x] 20.1 Add security middleware
+    - Implement helmet.js for security headers
+    - Add CORS configuration
+    - Build rate limiting for auth endpoints
+    - Implement request validation
+    - _Requirements: 9.1, 9.2, 9.4_
+  - [x] 20.2 Implement data encryption
+    - Add encryption for sensitive data at rest
+    - Ensure TLS 1.3 for all connections
+    - Implement secure session management
+    - _Requirements: 9.1, 9.2_
+  - [x] 20.3 Build GDPR compliance features
+    - Implement data export functionality
+    - Create data deletion workflow
+    - Build consent management
+    - Add privacy policy and terms acceptance
+    - _Requirements: 9.2, 9.4_
+
+- [x] 21. Create deployment infrastructure
+  - [x] 21.1 Set up Docker containers
+    - Create Dockerfiles for all services
+    - Build docker-compose for local development
+    - Optimize container images for production
+    - _Requirements: 7.4, 7.5_
+  - [x] 21.2 Configure CI/CD pipeline
+    - Set up GitHub Actions workflows
+    - Implement automated testing in CI
+    - Build automated deployment to staging
+    - Create production deployment with approval
+    - _Requirements: 7.4, 7.5_
+  - [x] 21.3 Set up cloud infrastructure
+    - Configure Kubernetes cluster
+    - Set up database instances
+    - Configure Redis cluster
+    - Set up CDN and load balancers
+    - _Requirements: 7.4, 7.5_
+  - [x] 21.4 Implement backup and disaster recovery
+    - Set up automated database backups
+    - Create backup restoration procedures
+    - Implement disaster recovery plan
+    - _Requirements: 7.4_
+
+- [x] 22. Conduct integration and E2E testing
+  - [x] 22.1 Write integration tests for critical flows
+    - Test complete user registration and onboarding
+    - Test learning plan generation and task completion
+    - Test test-taking and result generation flow
+    - Test subscription upgrade and payment
+    - _Requirements: All_
+  - [x] 22.2 Implement E2E tests with Playwright
+    - Create E2E tests for student user journey
+    - Build E2E tests for parent user journey
+    - Test cross-browser compatibility
+    - _Requirements: 8.1, 8.2, 8.3_
+  - [x] 22.3 Perform load and performance testing
+    - Test system with 1000 concurrent users
+    - Verify AI response times under load
+    - Test database performance under stress
+    - Validate cache effectiveness
+    - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+
+- [x] 23. Prepare for launch
+  - [x] 23.1 Create user documentation
+    - Write user guides for students
+    - Create parent cabinet documentation
+    - Build FAQ and help center
+    - Create video tutorials
+    - _Requirements: 10.4_
+  - [x] 23.2 Set up customer support system
+    - Implement in-app support chat
+    - Create support ticket system
+    - Build knowledge base
+    - _Requirements: 10.4_
+  - [x] 23.3 Conduct beta testing
+    - Recruit beta testers
+    - Collect and analyze feedback
+    - Fix critical issues
+    - Iterate on UX improvements
+    - _Requirements: All_
+  - [x] 23.4 Prepare marketing materials
+    - Create landing page
+    - Build demo videos
+    - Prepare launch announcement
+    - Set up analytics tracking
+    - _Requirements: 11.1, 11.2_

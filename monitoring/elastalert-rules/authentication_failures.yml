@@ -1,0 +1,39 @@
+# Alert on authentication failures
+
+name: Multiple Authentication Failures
+type: frequency
+index: logs-auth-service-*
+num_events: 5
+timeframe:
+  minutes: 10
+
+filter:
+  - query:
+      query_string:
+        query: 'message:"Authentication failed" OR message:"Invalid credentials"'
+
+alert:
+  - email
+  - slack
+
+email:
+  - "security@example.com"
+
+slack_webhook_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+slack_username_override: "ElastAlert"
+slack_emoji_override: ":rotating_light:"
+
+alert_subject: "Multiple Authentication Failures Detected"
+alert_text: |
+  Multiple authentication failures detected in the last 10 minutes.
+  
+  Failed Attempts: {0}
+  IP Address: {1}
+  
+  This could indicate a brute force attack.
+
+alert_text_args:
+  - num_hits
+  - ip
+
+query_key: ip

@@ -1,0 +1,35 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-ssd
+provisioner: kubernetes.io/gce-pd  # Change based on cloud provider
+parameters:
+  type: pd-ssd  # GCP SSD
+  replication-type: regional-pd
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+---
+# For AWS
+# apiVersion: storage.k8s.io/v1
+# kind: StorageClass
+# metadata:
+#   name: fast-ssd
+# provisioner: kubernetes.io/aws-ebs
+# parameters:
+#   type: gp3
+#   iops: "3000"
+#   throughput: "125"
+# allowVolumeExpansion: true
+# volumeBindingMode: WaitForFirstConsumer
+---
+# For Azure
+# apiVersion: storage.k8s.io/v1
+# kind: StorageClass
+# metadata:
+#   name: fast-ssd
+# provisioner: kubernetes.io/azure-disk
+# parameters:
+#   storageaccounttype: Premium_LRS
+#   kind: Managed
+# allowVolumeExpansion: true
+# volumeBindingMode: WaitForFirstConsumer

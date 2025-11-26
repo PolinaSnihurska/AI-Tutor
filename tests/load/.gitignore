@@ -1,0 +1,14 @@
+# Ignore test results
+results/*.json
+results/*.txt
+results/*.html
+
+# Keep the directory structure
+!results/.gitkeep
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*

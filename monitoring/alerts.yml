@@ -1,0 +1,125 @@
+# Prometheus alert rules for AI Tutoring Platform
+
+groups:
+  - name: service_health
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 1 minute"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status_code=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "{{ $labels.job }} has error rate above 5% (current: {{ $value }})"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time on {{ $labels.job }}"
+          description: "{{ $labels.job }} p95 response time is above 2s (current: {{ $value }}s)"
+
+  - name: ai_service
+    interval: 30s
+    rules:
+      - alert: AIGenerationSlow
+        expr: histogram_quantile(0.95, rate(ai_generation_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI generation is slow"
+          description: "AI generation p95 duration is above 5s (current: {{ $value }}s)"
+
+      - alert: AIGenerationFailureRate
+        expr: rate(ai_generation_total{status="error"}[5m]) / rate(ai_generation_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High AI generation failure rate"
+          description: "AI generation failure rate is above 10% (current: {{ $value }})"
+
+      - alert: OpenAIAPIErrors
+        expr: rate(openai_api_calls_total{status="error"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High OpenAI API error rate"
+          description: "OpenAI API error rate is high ({{ $value }} errors/sec)"
+
+  - name: resource_usage
+    interval: 30s
+    rules:
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes / node_memory_MemTotal_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.job }}"
+          description: "{{ $labels.job }} is using more than 90% of available memory"
+
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.job }}"
+          description: "{{ $labels.job }} is using more than 90% CPU"
+
+  - name: database
+    interval: 30s
+    rules:
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Database query p95 duration is above 1s (current: {{ $value }}s)"
+
+      - alert: DatabaseConnectionPoolExhausted
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Database is using more than 80% of available connections"
+
+  - name: cache
+    interval: 30s
+    rules:
+      - alert: LowCacheHitRate
+        expr: rate(cache_operations_total{result="hit"}[5m]) / rate(cache_operations_total{operation="get"}[5m]) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low cache hit rate on {{ $labels.job }}"
+          description: "Cache hit rate is below 50% (current: {{ $value }})"
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been down for more than 1 minute"

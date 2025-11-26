@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-tutoring-platform
+  labels:
+    name: ai-tutoring-platform
+    environment: production

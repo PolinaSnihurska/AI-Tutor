@@ -1,0 +1,269 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-scripts
+  namespace: ai-tutoring-platform
+data:
+  backup-postgres.sh: |
+    #!/bin/bash
+    set -e
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_FILE="postgres_backup_${TIMESTAMP}.sql.gz"
+    
+    echo "[$(date)] Starting PostgreSQL backup..."
+    
+    PGPASSWORD="${DB_PASSWORD}" pg_dump \
+      -h postgres-service \
+      -p 5432 \
+      -U "${DB_USER}" \
+      -d "${DB_NAME}" \
+      --format=custom \
+      --compress=9 \
+      --file="/backups/${BACKUP_FILE%.gz}"
+    
+    gzip -f "/backups/${BACKUP_FILE%.gz}"
+    
+    echo "[$(date)] Uploading to S3..."
+    aws s3 cp "/backups/${BACKUP_FILE}" \
+      "s3://${S3_BACKUP_BUCKET}/${ENVIRONMENT}/postgres/${BACKUP_FILE}" \
+      --storage-class STANDARD_IA
+    
+    aws s3 cp "/backups/${BACKUP_FILE}" \
+      "s3://${S3_BACKUP_BUCKET}/${ENVIRONMENT}/postgres/latest.sql.gz" \
+      --storage-class STANDARD_IA
+    
+    echo "[$(date)] Backup completed: ${BACKUP_FILE}"
+    
+  backup-mongodb.sh: |
+    #!/bin/bash
+    set -e
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_NAME="mongodb_backup_${TIMESTAMP}"
+    
+    echo "[$(date)] Starting MongoDB backup..."
+    
+    mongodump \
+      --host=mongodb-service \
+      --port=27017 \
+      --username="${MONGO_USER}" \
+      --password="${MONGO_PASSWORD}" \
+      --db="${MONGO_DB}" \
+      --authenticationDatabase=admin \
+      --out="/backups/${BACKUP_NAME}" \
+      --gzip
+    
+    tar -czf "/backups/${BACKUP_NAME}.tar.gz" -C /backups "${BACKUP_NAME}"
+    rm -rf "/backups/${BACKUP_NAME}"
+    
+    echo "[$(date)] Uploading to S3..."
+    aws s3 cp "/backups/${BACKUP_NAME}.tar.gz" \
+      "s3://${S3_BACKUP_BUCKET}/${ENVIRONMENT}/mongodb/${BACKUP_NAME}.tar.gz" \
+      --storage-class STANDARD_IA
+    
+    aws s3 cp "/backups/${BACKUP_NAME}.tar.gz" \
+      "s3://${S3_BACKUP_BUCKET}/${ENVIRONMENT}/mongodb/latest.tar.gz" \
+      --storage-class STANDARD_IA
+    
+    echo "[$(date)] Backup completed: ${BACKUP_NAME}.tar.gz"
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: ai-tutoring-platform
+spec:
+  # Run daily at 2 AM UTC
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: postgres-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: backup
+            image: postgres:15-alpine
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              apk add --no-cache aws-cli bash
+              /scripts/backup-postgres.sh
+            env:
+            - name: DB_HOST
+              value: "postgres-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: DB_PASSWORD
+            - name: S3_BACKUP_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: S3_BACKUP_BUCKET
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ENVIRONMENT
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: AWS_REGION
+            volumeMounts:
+            - name: backup-scripts
+              mountPath: /scripts
+            - name: backup-storage
+              mountPath: /backups
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "250m"
+              limits:
+                memory: "1Gi"
+                cpu: "500m"
+          volumes:
+          - name: backup-scripts
+            configMap:
+              name: backup-scripts
+              defaultMode: 0755
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: backup-storage
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongodb-backup
+  namespace: ai-tutoring-platform
+spec:
+  # Run daily at 3 AM UTC
+  schedule: "0 3 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: mongodb-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: backup
+            image: mongo:7
+            command: ["/bin/bash", "-c"]
+            args:
+            - |
+              apt-get update && apt-get install -y awscli
+              /scripts/backup-mongodb.sh
+            env:
+            - name: MONGO_HOST
+              value: "mongodb-service"
+            - name: MONGO_PORT
+              value: "27017"
+            - name: MONGO_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MONGO_DB
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MONGO_USER
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MONGO_PASSWORD
+            - name: S3_BACKUP_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: S3_BACKUP_BUCKET
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ENVIRONMENT
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: AWS_REGION
+            volumeMounts:
+            - name: backup-scripts
+              mountPath: /scripts
+            - name: backup-storage
+              mountPath: /backups
+            resources:
+              requests:
+                memory: "1Gi"
+                cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "1000m"
+          volumes:
+          - name: backup-scripts
+            configMap:
+              name: backup-scripts
+              defaultMode: 0755
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: backup-storage
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-storage
+  namespace: ai-tutoring-platform
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: standard

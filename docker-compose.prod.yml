@@ -1,0 +1,239 @@
+version: '3.8'
+
+services:
+  # Backend Services
+  auth-service:
+    image: ${DOCKER_REGISTRY}/ai-tutor-auth-service:${VERSION:-latest}
+    container_name: ai-tutor-auth-service
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      SENTRY_DSN: ${SENTRY_DSN}
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    networks:
+      - ai-tutor-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ai-service:
+    image: ${DOCKER_REGISTRY}/ai-tutor-ai-service:${VERSION:-latest}
+    container_name: ai-tutor-ai-service
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      REDIS_URL: ${REDIS_URL}
+      ENVIRONMENT: production
+      SENTRY_DSN: ${SENTRY_DSN}
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    networks:
+      - ai-tutor-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  test-service:
+    image: ${DOCKER_REGISTRY}/ai-tutor-test-service:${VERSION:-latest}
+    container_name: ai-tutor-test-service
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      MONGODB_URI: ${MONGODB_URI}
+      REDIS_URL: ${REDIS_URL}
+      AI_SERVICE_URL: http://ai-service:8000
+      SENTRY_DSN: ${SENTRY_DSN}
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    networks:
+      - ai-tutor-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  learning-plan-service:
+    image: ${DOCKER_REGISTRY}/ai-tutor-learning-plan-service:${VERSION:-latest}
+    container_name: ai-tutor-learning-plan-service
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      DATABASE_URL: ${DATABASE_URL}
+      AI_SERVICE_URL: http://ai-service:8000
+      SENTRY_DSN: ${SENTRY_DSN}
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    networks:
+      - ai-tutor-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  analytics-service:
+    image: ${DOCKER_REGISTRY}/ai-tutor-analytics-service:${VERSION:-latest}
+    container_name: ai-tutor-analytics-service
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      SENTRY_DSN: ${SENTRY_DSN}
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    networks:
+      - ai-tutor-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  admin-service:
+    image: ${DOCKER_REGISTRY}/ai-tutor-admin-service:${VERSION:-latest}
+    container_name: ai-tutor-admin-service
+    environment:
+      NODE_ENV: production
+      PORT: 3006
+      DATABASE_URL: ${DATABASE_URL}
+      SENTRY_DSN: ${SENTRY_DSN}
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    networks:
+      - ai-tutor-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Frontend Services
+  frontend:
+    image: ${DOCKER_REGISTRY}/ai-tutor-frontend:${VERSION:-latest}
+    container_name: ai-tutor-frontend
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+    networks:
+      - ai-tutor-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  admin-frontend:
+    image: ${DOCKER_REGISTRY}/ai-tutor-admin-frontend:${VERSION:-latest}
+    container_name: ai-tutor-admin-frontend
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+    networks:
+      - ai-tutor-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  ai-tutor-network:
+    driver: overlay

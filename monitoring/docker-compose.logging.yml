@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Elasticsearch for log storage
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - logging
+    restart: unless-stopped
+
+  # Logstash for log processing
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: logstash
+    ports:
+      - "5000:5000/udp"
+      - "5001:5001"
+      - "9600:9600"
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ../packages:/var/log/services:ro
+    environment:
+      - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    networks:
+      - logging
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  # Kibana for log visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - logging
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  # Filebeat for log shipping (alternative to direct file reading)
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: filebeat
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ../packages:/var/log/services:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: filebeat -e -strict.perms=false
+    networks:
+      - logging
+    depends_on:
+      - elasticsearch
+      - logstash
+    restart: unless-stopped
+
+volumes:
+  elasticsearch-data:
+
+networks:
+  logging:
+    driver: bridge

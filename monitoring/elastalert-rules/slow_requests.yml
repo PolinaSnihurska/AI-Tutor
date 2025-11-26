@@ -1,0 +1,42 @@
+# Alert on slow requests
+
+name: Slow Requests Detected
+type: frequency
+index: logs-*
+num_events: 10
+timeframe:
+  minutes: 5
+
+filter:
+  - range:
+      duration:
+        gte: 5000  # 5 seconds
+
+alert:
+  - email
+  - slack
+
+email:
+  - "performance@example.com"
+
+slack_webhook_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+slack_username_override: "ElastAlert"
+slack_emoji_override: ":snail:"
+
+alert_subject: "Slow Requests Detected"
+alert_text: |
+  Multiple slow requests detected in the last 5 minutes.
+  
+  Service: {0}
+  Slow Request Count: {1}
+  Average Duration: {2}ms
+  
+  Please investigate performance issues.
+
+alert_text_args:
+  - service
+  - num_hits
+  - duration
+
+aggregation:
+  minutes: 5

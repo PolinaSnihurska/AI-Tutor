@@ -1,0 +1,36 @@
+# Alert on high error rate
+
+name: High Error Rate
+type: frequency
+index: logs-*
+num_events: 50
+timeframe:
+  minutes: 5
+
+filter:
+  - term:
+      level: "ERROR"
+
+alert:
+  - email
+  - slack
+
+email:
+  - "alerts@example.com"
+
+slack_webhook_url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+slack_username_override: "ElastAlert"
+slack_emoji_override: ":warning:"
+
+alert_subject: "High Error Rate Detected"
+alert_text: |
+  High error rate detected in the last 5 minutes.
+  
+  Service: {0}
+  Error Count: {1}
+  
+  Please investigate immediately.
+
+alert_text_args:
+  - service
+  - num_hits

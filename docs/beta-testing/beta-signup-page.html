@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join AI Tutoring Platform Beta | Early Access</title>
+    <meta name="description" content="Be among the first to experience personalized AI-powered learning. Join our beta program and get free premium access.">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 40px;
+            opacity: 0.95;
+        }
+
+        .beta-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .signup-section {
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            margin: 40px auto;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .signup-section h2 {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 25px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 10px;
+            margin-top: 4px;
+        }
+
+        .checkbox-group label {
+            margin-bottom: 0;
+            font-weight: normal;
+            font-size: 0.9rem;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .benefits {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin: 60px 0;
+        }
+
+        .benefit-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .benefit-card .icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .benefit-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .benefit-card p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .timeline {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin: 40px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .timeline h2 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+
+        .timeline-item {
+            display: flex;
+            margin-bottom: 30px;
+            align-items: flex-start;
+        }
+
+        .timeline-item .phase {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-right: 20px;
+            white-space: nowrap;
+        }
+
+        .timeline-item .content h3 {
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .timeline-item .content p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .faq {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin: 40px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .faq h2 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+
+        .faq-item {
+            margin-bottom: 25px;
+        }
+
+        .faq-item h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .faq-item p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: white;
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .signup-section {
+                padding: 40px 20px;
+            }
+
+            .timeline-item {
+                flex-direction: column;
+            }
+
+            .timeline-item .phase {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <div class="beta-badge">🚀 Limited Beta Access</div>
+            <h1>Join the AI Tutoring Revolution</h1>
+            <p>Be among the first to experience personalized, AI-powered learning that adapts to your needs</p>
+        </div>
+
+        <div class="benefits">
+            <div class="benefit-card">
+                <div class="icon">🎁</div>
+                <h3>Free Premium Access</h3>
+                <p>Get 6 months of premium features absolutely free during and after beta</p>
+            </div>
+            <div class="benefit-card">
+                <div class="icon">⭐</div>
+                <h3>Founder's Badge</h3>
+                <p>Special recognition as an early supporter who helped shape the platform</p>
+            </div>
+            <div class="benefit-card">
+                <div class="icon">🎯</div>
+                <h3>Shape the Product</h3>
+                <p>Your feedback directly influences features and improvements</p>
+            </div>
+            <div class="benefit-card">
+                <div class="icon">🚀</div>
+                <h3>Early Access</h3>
+                <p>Be the first to try new features before anyone else</p>
+            </div>
+        </div>
+
+        <div class="signup-section">
+            <h2>Sign Up for Beta Access</h2>
+            <form id="betaSignupForm">
+                <div class="form-group">
+                    <label for="name">Full Name *</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="role">I am a... *</label>
+                    <select id="role" name="role" required>
+                        <option value="">Select your role</option>
+                        <option value="student">Student</option>
+                        <option value="parent">Parent</option>
+                        <option value="both">Both</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="age">Age (or child's age if parent)</label>
+                    <input type="number" id="age" name="age" min="10" max="100">
+                </div>
+
+                <div class="form-group">
+                    <label for="exam">Preparing for which exam?</label>
+                    <select id="exam" name="exam">
+                        <option value="">Select exam</option>
+                        <option value="nmt">NMT (Ukraine)</option>
+                        <option value="sat">SAT</option>
+                        <option value="act">ACT</option>
+                        <option value="other">Other</option>
+                        <option value="none">Not preparing for specific exam</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="referral">How did you hear about us?</label>
+                    <select id="referral" name="referral">
+                        <option value="">Select source</option>
+                        <option value="social">Social Media</option>
+                        <option value="friend">Friend/Family</option>
+                        <option value="search">Search Engine</option>
+                        <option value="community">Online Community</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="motivation">Why do you want to join the beta? (Optional)</label>
+                    <textarea id="motivation" name="motivation" placeholder="Tell us what excites you about AI-powered learning..."></textarea>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="feedback" name="feedback">
+                    <label for="feedback">I'm willing to provide regular feedback and participate in surveys</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="interview" name="interview">
+                    <label for="interview">I'm open to participating in user interviews (30 minutes)</label>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="terms" name="terms" required>
+                    <label for="terms">I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a> *</label>
+                </div>
+
+                <button type="submit" class="submit-btn">Join the Beta Waitlist</button>
+            </form>
+        </div>
+
+        <div class="timeline">
+            <h2>Beta Timeline</h2>
+            <div class="timeline-item">
+                <div class="phase">Phase 1</div>
+                <div class="content">
+                    <h3>Closed Alpha (2 weeks)</h3>
+                    <p>Small group of 10-15 testers. Focus on core functionality and critical bugs.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="phase">Phase 2</div>
+                <div class="content">
+                    <h3>Private Beta (4 weeks)</h3>
+                    <p>50-100 invited users. Real-world usage testing and feature validation.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="phase">Phase 3</div>
+                <div class="content">
+                    <h3>Public Beta (4-6 weeks)</h3>
+                    <p>500-1000 users. Scale testing and final polish before launch.</p>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="phase">Launch</div>
+                <div class="content">
+                    <h3>Public Launch</h3>
+                    <p>Platform opens to everyone. Beta testers keep their premium access!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq">
+            <h2>Frequently Asked Questions</h2>
+            
+            <div class="faq-item">
+                <h3>When will I get access?</h3>
+                <p>We're accepting beta testers in waves. You'll receive an email invitation within 2-4 weeks of signing up, depending on which phase you're selected for.</p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Is the beta really free?</h3>
+                <p>Yes! Beta testers get free premium access during the beta period and for 6 months after launch. No credit card required.</p>
+            </div>
+
+            <div class="faq-item">
+                <h3>What's expected of beta testers?</h3>
+                <p>We ask that you use the platform regularly, report any bugs you find, and complete weekly feedback surveys. User interviews are optional but appreciated.</p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Can I invite friends?</h3>
+                <p>Once you're accepted into the beta, you'll receive referral codes to invite friends and family.</p>
+            </div>
+
+            <div class="faq-item">
+                <h3>What if I find a bug?</h3>
+                <p>Great! That's what beta testing is for. You can report bugs directly in the app or email us at beta@aitutoring.com.</p>
+            </div>
+
+            <div class="faq-item">
+                <h3>Will my data be safe?</h3>
+                <p>Absolutely. We use the same security measures as our production environment, including encryption and GDPR compliance.</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Questions? Email us at <a href="mailto:beta@aitutoring.com">beta@aitutoring.com</a></p>
+            <p style="margin-top: 20px; opacity: 0.8;">© 2025 AI Tutoring Platform. All rights reserved.</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('betaSignupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Add checkboxes
+            data.feedback = document.getElementById('feedback').checked;
+            data.interview = document.getElementById('interview').checked;
+            data.terms = document.getElementById('terms').checked;
+            
+            try {
+                // Replace with your actual API endpoint
+                const response = await fetch('/api/beta-signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    alert('Thank you for signing up! Check your email for confirmation.');
+                    e.target.reset();
+                } else {
+                    alert('Something went wrong. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Something went wrong. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>
